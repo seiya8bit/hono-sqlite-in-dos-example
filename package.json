@@ -3,13 +3,17 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --minify",
-    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "gen": "npx drizzle-kit generate"
   },
   "dependencies": {
+    "dotenv": "^16.5.0",
+    "drizzle-orm": "^0.43.1",
     "hono": "^4.7.8"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250504.0",
-    "wrangler": "^4.4.0"
+    "drizzle-kit": "^0.31.1",
+    "wrangler": "^4.14.1"
   }
 }

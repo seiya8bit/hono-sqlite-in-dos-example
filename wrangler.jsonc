@@ -3,20 +3,28 @@
   "name": "hono-sqlite-in-dos-example",
   "main": "src/index.ts",
   "compatibility_date": "2025-05-04",
+  "compatibility_flags": ["nodejs_compat"],
   "migrations": [
     {
-      "new_sqlite_classes": ["Counter"],
       "tag": "v1",
+      "new_sqlite_classes": ["Database"],
     },
   ],
   "durable_objects": {
     "bindings": [
       {
-        "class_name": "Counter",
-        "name": "COUNTER",
+        "class_name": "Database",
+        "name": "DATABASE",
       },
     ],
   },
+  "rules": [
+    {
+      "type": "Text",
+      "globs": ["**/*.sql"],
+      "fallthrough": true
+    }
+  ],
   "observability": {
     "enabled": true,
   },

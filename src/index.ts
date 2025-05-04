@@ -1,69 +1,82 @@
-import { DurableObject } from 'cloudflare:workers'
-import { Env, Hono } from 'hono'
+/// <reference types="@cloudflare/workers-types" />
+import { DurableObject } from 'cloudflare:workers';
+import { drizzle, type DrizzleSqliteDODatabase } from 'drizzle-orm/durable-sqlite';
+import { migrate } from 'drizzle-orm/durable-sqlite/migrator';
+import { Env, Hono } from 'hono';
+import { prettyJSON } from 'hono/pretty-json';
+import migrations from '../drizzle/migrations';
+import { usersTable } from './db/schema';
 
-export class Counter extends DurableObject {
-  value = 0
+export class Database extends DurableObject {
+	storage: DurableObjectStorage;
+	db: DrizzleSqliteDODatabase<any>;
 
-  constructor(ctx: DurableObjectState, env: Env) {
-    super(ctx, env)
+	constructor(ctx: DurableObjectState, env: Env) {
+		super(ctx, env);
+		this.storage = ctx.storage;
+		this.db = drizzle(this.storage, { logger: false });
 
-    ctx.blockConcurrencyWhile(async () => {
-      this.value = (await ctx.storage.get('value')) || 0
-    })
+		// Make sure all migrations complete before accepting queries.
+		// Otherwise you will need to run `this.migrate()` in any function
+		// that accesses the Drizzle database `this.db`.
+		ctx.blockConcurrencyWhile(async () => {
+			await this._migrate();
+		});
+	}
+
+  async _migrate() {
+		migrate(this.db, migrations);
+	}
+
+  /// ユーザ一覧を取得
+  async fetchUsers() {
+    return this.db.select().from(usersTable);
   }
 
-  async getCounterValue() {
-    return this.value
-  }
+  /// ユーザを作成
+  async createUser(user: typeof usersTable.$inferInsert) {
+    const res = await this
+    .db
+    .insert(usersTable)
+    .values(user)
+    .returning({id: usersTable.id});
 
-  async increment(amount = 1): Promise<number> {
-    this.value += amount
-    await this.ctx.storage.put('value', this.value)
-    return this.value
-  }
-
-  async decrement(amount = 1): Promise<number> {
-    this.value -= amount
-    await this.ctx.storage.put('value', this.value)
-    return this.value
+    return res.length > 0 ? res[0].id: undefined
   }
 }
 
 type Bindings = {
   MY_BUCKET: R2Bucket
-  COUNTER: DurableObjectNamespace<Counter>
+  DATABASE: DurableObjectNamespace<Database>
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-app.get('/counter', async (c) => {
-  const env = c.env
-  const id = env.COUNTER.idFromName('counter')
-  const stub = env.COUNTER.get(id)
+app.use(prettyJSON())
 
-  const counterValue = await stub.getCounterValue()
+app.get('/users', async (c) => {
+  const id = c.env.DATABASE.idFromName('example');
+  const stub = c.env.DATABASE.get(id);
+  const res = await stub.fetchUsers();
 
-  return c.text(counterValue.toString())
+  return c.json(res)
 })
 
-app.post('/counter/increment', async (c) => {
-  const env = c.env
-  const id = env.COUNTER.idFromName('counter')
-  const stub = env.COUNTER.get(id)
+app.post('/users', async (c) => {
+  const body = await c.req.json();
+  const id = c.env.DATABASE.idFromName('example');
+  const stub = c.env.DATABASE.get(id);
 
-  const value = await stub.increment()
+  const res = await stub.createUser(body);
 
-  return c.text(value.toString())
-})
+  if(res !== undefined) {
+    c.status(201);
+    c.res.headers.append('Location', '/users');
+    return c.text('ユーザを作成しました。');
+  }
 
-app.post('/counter/decrement', async (c) => {
-  const env = c.env
-  const id = env.COUNTER.idFromName('counter')
-  const stub = env.COUNTER.get(id)
-
-  const value = await stub.decrement()
-
-  return c.text(value.toString())
+  c.status(500);
+  return c.text('ユーザの作成に失敗しました。');
 })
 
 export default app

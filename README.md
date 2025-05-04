@@ -1,21 +1,6 @@
-```txt
-npm install
-npm run dev
-```
+# Hono, SQLite in DOs, Drizzle ORM サンプル
 
-```txt
-npm run deploy
-```
+# 参考リンク
 
-[For generating/synchronizing types based on your Worker configuration run](https://developers.cloudflare.com/workers/wrangler/commands/#types):
-
-```txt
-npm run cf-typegen
-```
-
-Pass the `CloudflareBindings` as generics when instantiation `Hono`:
-
-```ts
-// src/index.ts
-const app = new Hono<{ Bindings: CloudflareBindings }>()
-```
+- [Cloudflare Durable Objects - Hono](https://hono.dev/examples/cloudflare-durable-objects)
+- [Get Started with Drizzle and SQLite Durable Objects](https://orm.drizzle.team/docs/get-started/do-new)
