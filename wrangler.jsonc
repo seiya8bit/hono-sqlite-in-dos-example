@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hono-sqlite-in-dos-example",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-05-04",
+  "migrations": [
+    {
+      "new_sqlite_classes": ["Counter"],
+      "tag": "v1",
+    },
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "Counter",
+        "name": "COUNTER",
+      },
+    ],
+  },
+  "observability": {
+    "enabled": true,
+  },
+}
